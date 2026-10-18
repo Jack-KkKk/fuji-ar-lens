@@ -130,6 +130,7 @@ button:focus-visible{outline:2px solid var(--kin);outline-offset:3px}
 <div id="msg" hidden></div>
 <div class="bot" id="botbar" hidden>
   <button id="calBtn" type="button">후지산에 맞추기</button>
+  <button id="rangeBtn" type="button">근처 2 km</button>
   <button id="fovBtn" type="button">화각 52°</button>
   <button id="listBtn" type="button">목록</button>
 </div>
@@ -308,6 +309,11 @@ $("calBtn").onclick=()=>{
   offset=norm(bearing(me,P[0])-rawH);try{localStorage.setItem("ar_off",offset)}catch(e){}
   msg(`후지산을 화면 가운데 원에 두고 누르셨죠? 보정 ${offset>0?"+":""}${offset.toFixed(0)}° 적용.`,4000);
 };
+const RANGES=[{r:2000,t:"근처 2 km"},{r:5000,t:"근처 5 km"},{r:15000,t:"근처 15 km"}];
+let rangeIdx=0;try{rangeIdx=Math.min(2,+localStorage.getItem("ar_range")||0)}catch(e){}
+$("rangeBtn").textContent=RANGES[rangeIdx].t;
+$("rangeBtn").onclick=()=>{rangeIdx=(rangeIdx+1)%RANGES.length;try{localStorage.setItem("ar_range",rangeIdx)}catch(e){}
+  $("rangeBtn").textContent=RANGES[rangeIdx].t;msg(RANGES[rangeIdx].t+" 안의 장소를 최대 4곳까지 보여줘요. 범위 안에 없으면 가장 가까운 1곳만 보여요.",3500)};
 $("fovBtn").onclick=()=>{fov=fov>=70?40:fov+6;try{localStorage.setItem("ar_fov",fov)}catch(e){}$("fovBtn").textContent="화각 "+fov+"°"};
 $("listBtn").onclick=()=>{
   const rows=P.map(p=>({p,d:me?dist(me,p):null})).sort((a,b)=>(a.d??0)-(b.d??0));
@@ -362,9 +368,14 @@ function loop(){
   $("here").textContent=near.d<250?"지금 여기: "+near.p.name:"가장 가까운 곳: "+near.p.name+" "+fmt(near.d);
   const vfov=fov*H/W, placed=[];
   edgeL.hidden=edgeR.hidden=true;
-  P.map(p=>({p,d:dist(me,p)})).sort((a,b)=>b.d-a.d).forEach(({p,d})=>{
+  // 표시할 장소 고르기: 후지산 정상 + 범위 안 가까운 순 최대 4곳 (없으면 가장 가까운 1곳)
+  const R0=RANGES[rangeIdx].r, all=P.map(p=>({p,d:dist(me,p)}));
+  const spots=all.filter(o=>!o.p.fuji&&o.d>=120).sort((a,b)=>a.d-b.d);
+  let pick=spots.filter(o=>o.d<=R0).slice(0,4);if(!pick.length)pick=spots.slice(0,1);
+  const show=new Set(pick.map(o=>o.p.id).concat("fuji"));
+  all.sort((a,b)=>b.d-a.d).forEach(({p,d})=>{
     const el=els[p.id];
-    if(heading==null||d<120||d>45000){el.style.opacity=0;el.style.pointerEvents="none";return}
+    if(heading==null||!show.has(p.id)||d<120||d>45000){el.style.opacity=0;el.style.pointerEvents="none";return}
     const rel=norm(bearing(me,p)-heading);
     if(p.fuji&&Math.abs(rel)>fov/2){const e=rel<0?edgeL:edgeR;e.hidden=false;e.textContent=(rel<0?"◀ ":"")+"후지산 "+Math.abs(rel).toFixed(0)+"°"+(rel>0?" ▶":"")}
     if(Math.abs(rel)>fov/2+4){el.style.opacity=0;el.style.pointerEvents="none";return}
