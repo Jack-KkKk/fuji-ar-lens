@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1c1a17">
+<meta name="color-scheme" content="only light">
+<title>후지산 AR 렌즈</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Nanum+Myeongjo:wght@700;800&family=Zen+Kaku+Gothic+New:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+/* 화지(和紙) 바탕, 먹(墨) 글씨, 주홍(朱) 인장, 금(金) 테두리 */
+:root{color-scheme:only light;--sumi:#1c1a17;--washi:#f4ecdc;--washi2:#e8dcc2;--shu:#c53d2b;--kin:#b08a3e;--ai:#22385a;--line:#cbbd9f;
+  --mincho:"Shippori Mincho B1","Nanum Myeongjo","Hiragino Mincho ProN",serif;
+  --body:"IBM Plex Sans KR","Zen Kaku Gothic New",system-ui,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--sumi);color:var(--washi);font:15px/1.55 var(--body);overflow:hidden;-webkit-user-select:none;user-select:none}
+.washi{background-color:var(--washi);background-image:
+  radial-gradient(rgba(120,95,50,.07) 1px,transparent 1.4px),radial-gradient(rgba(120,95,50,.05) 1px,transparent 1.2px);
+  background-size:7px 7px,11px 13px;background-position:0 0,3px 5px}
+video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#layer{position:fixed;inset:0;pointer-events:none}
+
+/* 이름표: 센자후다(千社札)처럼 세운 화지 패 */
+.lbl{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;cursor:pointer;text-align:center;will-change:left,top;transition:opacity .2s}
+.lbl .b{display:flex;align-items:stretch;gap:0;background:var(--washi);color:var(--sumi);border:1.5px solid var(--sumi);border-radius:2px;
+  box-shadow:2px 3px 0 rgba(0,0,0,.35);white-space:nowrap;overflow:hidden}
+.lbl .t{padding:5px 10px 4px;text-align:left}
+.lbl .n{font:800 .95rem/1.25 var(--mincho)}
+.lbl .j{font:500 .66rem/1.3 "Zen Kaku Gothic New",var(--body);color:#6b5d45;letter-spacing:.04em}
+.lbl .d{display:flex;align-items:center;padding:0 7px;background:var(--shu);color:var(--washi);font:700 .74rem var(--mincho);font-variant-numeric:tabular-nums}
+.lbl .stem{width:2px;height:18px;margin:0 auto;background:var(--washi);box-shadow:0 0 0 .5px rgba(0,0,0,.4)}
+.lbl .pin{width:12px;height:12px;margin:-2px auto 0;border-radius:50%;background:var(--shu);border:2px solid var(--washi);box-shadow:0 0 0 1px var(--sumi)}
+.lbl.fuji .b{background:var(--shu);color:var(--washi);border:2px solid var(--kin);outline:1px solid var(--shu);outline-offset:1px}
+.lbl.fuji .n{font-size:1.15rem}
+.lbl.fuji .j{color:var(--washi)}
+.lbl.fuji .d{background:var(--sumi);color:var(--washi)}
+
+.edge{position:absolute;top:50%;transform:translateY(-50%);background:var(--sumi);color:var(--washi);border:1px solid var(--kin);border-radius:2px;padding:6px 10px;
+  font:700 .8rem var(--mincho);pointer-events:auto;white-space:nowrap}
+.top{position:fixed;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) max(14px,env(safe-area-inset-right,0px)) 10px max(14px,env(safe-area-inset-left,0px));
+  display:flex;justify-content:space-between;align-items:center;gap:10px;background:rgba(28,26,23,.88);border-bottom:1px solid var(--kin);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.here{font:700 .92rem var(--mincho);color:var(--washi);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h{flex:0 0 auto;color:var(--washi);display:flex;align-items:center;gap:6px;font:700 .82rem var(--mincho);font-variant-numeric:tabular-nums}
+.h b{display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 4px;background:var(--shu);color:var(--washi);border-radius:2px;font:800 .9rem var(--mincho)}
+.bot{position:fixed;left:0;right:0;bottom:0;padding:12px max(14px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(14px,env(safe-area-inset-left,0px));
+  display:flex;gap:8px;flex-wrap:wrap;justify-content:center;background:rgba(28,26,23,.88);border-top:1px solid var(--kin);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+button{font:700 .86rem var(--mincho);border:1px solid var(--kin);background:var(--sumi);color:var(--washi);border-radius:2px;padding:10px 16px;cursor:pointer;letter-spacing:.02em}
+button.p{background:var(--shu);border-color:var(--shu);box-shadow:inset 0 0 0 2px var(--washi),0 0 0 1px var(--shu)}
+button:focus-visible{outline:2px solid var(--kin);outline-offset:3px}
+/* 조준점: 가는 주홍 원과 먹 십자 */
+.cross{position:fixed;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border:2px solid var(--shu);border-radius:50%;pointer-events:none;box-shadow:0 0 0 1px rgba(255,255,255,.7),inset 0 0 0 1px rgba(255,255,255,.7)}
+.cross::before,.cross::after{content:"";position:absolute;background:var(--washi);box-shadow:0 0 0 .5px rgba(0,0,0,.6)}
+.cross::before{left:50%;top:-8px;bottom:-8px;width:1px}
+.cross::after{top:50%;left:-8px;right:-8px;height:1px}
+
+/* 시작 화면 */
+#start{position:fixed;inset:0;color:var(--sumi);display:flex;flex-direction:column;overflow-y:auto;
+  padding:calc(env(safe-area-inset-top,0px) + 18px) max(22px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 22px) max(22px,env(safe-area-inset-left,0px))}
+/* 그림 영역과 글 영역을 분리: 글자가 그림 위에 겹치지 않음 */
+#start .art{position:relative;flex:1 1 auto;min-height:200px;max-height:520px;margin:0 calc(-1 * max(22px,env(safe-area-inset-left,0px)))}
+#start .sun{position:absolute;right:14%;top:8%;width:30%;max-width:170px;aspect-ratio:1;border-radius:50%;background:var(--shu)}
+#start .mt,#start .snow{position:absolute;left:-10%;right:-10%;top:26%;bottom:34px}
+#start .mt{background:var(--ai);clip-path:polygon(0 100%,38% 18%,44% 10%,50% 8%,56% 10%,62% 18%,100% 100%)}
+#start .snow{background:var(--washi);clip-path:polygon(38.2% 18%,44% 10%,50% 8%,56% 10%,61.8% 18%,58% 26%,54% 21%,50% 28%,46% 21%,42% 26%)}
+#start .waves{position:absolute;left:0;right:0;bottom:0;height:54px;
+  background:radial-gradient(circle at 50% 100%,var(--washi) 0 22%,var(--ai) 22% 30%,var(--washi) 30% 42%,var(--ai) 42% 50%,var(--washi) 50% 62%,var(--ai) 62% 70%,transparent 70%) 0 0/36px 18px}
+#start .tate{position:absolute;left:max(22px,env(safe-area-inset-left,0px));top:0;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font:800 2.2rem/1.1 var(--mincho);color:var(--sumi)}
+#start .tate span{display:block}
+#start .tate small{font-size:.72rem;letter-spacing:.15em;color:var(--shu);margin-top:8px;writing-mode:vertical-rl}
+#start .card{position:relative;flex:0 0 auto;display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid var(--line)}
+#start .card{position:relative;display:flex;flex-direction:column;gap:12px}
+#start h1{font:800 2rem/1.2 var(--mincho);margin:0}
+#start p{margin:0;max-width:34em;color:#3d362c}
+#start .row{display:flex;gap:10px;flex-wrap:wrap}
+#start .row button:not(.p){background:var(--washi);color:var(--sumi);border-color:var(--sumi)}
+#start small.hint{color:#6b5d45;font-size:.8rem}
+.seal{display:inline-grid;place-items:center;width:42px;height:42px;border:2px solid var(--shu);color:var(--shu);border-radius:3px;font:800 .95rem/1.05 var(--mincho);transform:rotate(-4deg);text-align:center}
+
+/* 설명 시트: 고슈인(御朱印)첩처럼 이중 주홍 테두리 */
+#sheet{position:fixed;left:0;right:0;bottom:0;color:var(--sumi);border-top:3px solid var(--shu);
+  padding:20px max(18px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 18px) max(18px,env(safe-area-inset-left,0px));max-height:78%;overflow:auto;z-index:5;-webkit-overflow-scrolling:touch}
+#sheet .in{border:1px solid var(--shu);outline:1px solid var(--shu);outline-offset:3px;padding:16px;margin:4px}
+#sheet h2{margin:0;font:800 1.35rem/1.3 var(--mincho)}
+#sheet .jp{color:#6b5d45;font:500 .85rem "Zen Kaku Gothic New",var(--body)}
+#sheet .meta{font:700 .82rem var(--mincho);color:var(--shu);margin:8px 0}
+#sheet p{margin:0}
+#sheet ul{padding-left:18px;margin:10px 0 14px}
+#sheet .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+#sheet a.btn{padding:10px 16px;border:1px solid var(--sumi);border-radius:2px;color:var(--sumi);text-decoration:none;font:700 .86rem var(--mincho)}
+#sheet .list{list-style:none;padding:0;margin:10px 0}
+#sheet .list li{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font:700 .95rem var(--mincho);cursor:pointer}
+#sheet .list span{color:var(--shu);font-variant-numeric:tabular-nums}
+#sheet .kicker{font:500 .8rem "Zen Kaku Gothic New",var(--body);color:#6b5d45;letter-spacing:.06em}
+#sheet h3{margin:16px 0 6px;font:800 .9rem var(--mincho);color:var(--shu);display:flex;align-items:center;gap:8px}
+#sheet h3::after{content:"";flex:1;height:1px;background:var(--line)}
+#sheet .key{margin:10px 0 12px;padding:10px 12px;background:var(--sumi);color:var(--washi);font:800 1rem/1.5 var(--mincho);border-left:4px solid var(--shu)}
+#sheet .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+#sheet .num{border:1.5px solid var(--shu);padding:8px;text-align:center;min-width:0}
+#sheet .num b{display:block;font:800 1.15rem/1.2 var(--mincho);color:var(--shu);font-variant-numeric:tabular-nums}
+#sheet .num span{display:block;font-size:.76rem;line-height:1.35;color:#3d362c;margin-top:2px}
+#sheet .story{line-height:1.75;color:#2a251e}
+#sheet .pts{margin:4px 0;padding-left:0;list-style:none;counter-reset:pt;display:flex;flex-direction:column;gap:6px}
+#sheet .pts li{counter-increment:pt;display:flex;gap:10px;align-items:baseline;font-weight:600}
+#sheet .pts li::before{content:counter(pt,cjk-ideographic);flex:0 0 26px;height:26px;display:grid;place-items:center;background:var(--shu);color:var(--washi);font:800 .85rem var(--mincho);border-radius:2px}
+#sheet .qz{margin-top:14px;border:1px dashed var(--shu);padding:10px 12px}
+#sheet .qz summary{cursor:pointer;font-weight:700}
+#sheet .qz p{margin:8px 0 0;color:var(--shu);font-weight:700}
+#sheet .hook{font:500 .8rem/1.45 var(--body);color:#6b5d45;margin-top:2px}
+#sheet .list li>div{min-width:0}
+#sheet .qn{font:700 .8rem var(--mincho);color:var(--shu)}
+#sheet h2.q{margin:8px 0 12px;line-height:1.45}
+#sheet .ans{background:var(--washi2);padding:12px;border-left:4px solid var(--shu)}
+#sheet .acts button.p{background:var(--shu);border-color:var(--shu)}
+#sheet .fun{position:relative;margin:4px 0 14px;padding:14px 14px 12px;background:var(--washi2);border:1.5px solid var(--sumi)}
+#sheet .fun .fl{position:absolute;top:-11px;left:12px;background:var(--shu);color:var(--washi);font:800 .74rem var(--mincho);padding:2px 9px;border-radius:2px}
+#sheet .fun h4{margin:4px 0 6px;font:800 1.08rem/1.4 var(--mincho)}
+#sheet .fun p{margin:0;line-height:1.75;color:#2a251e}
+#msg{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 62px);transform:translateX(-50%);background:var(--washi);color:var(--sumi);border:1px solid var(--sumi);border-left:4px solid var(--shu);
+  padding:8px 14px;border-radius:2px;font-size:.85rem;max-width:90%;text-align:center;z-index:6}
+@media (prefers-reduced-motion:no-preference){#start .sun{animation:rise 1.4s ease-out both}@keyframes rise{from{transform:translateY(30px);opacity:.4}}}
+</style>
+</head>
+<body>
+<video id="v" playsinline muted autoplay></video>
+<div id="layer"></div>
+<div class="cross" id="cross" hidden></div>
+<div class="top" id="topbar" hidden><span class="here" id="here">위치 찾는 중…</span><span class="h" id="hd"><b>—</b></span></div>
+<div id="msg" hidden></div>
+<div class="bot" id="botbar" hidden>
+  <button id="calBtn" type="button">후지산에 맞추기</button>
+  <button id="fovBtn" type="button">화각 52°</button>
+  <button id="listBtn" type="button">목록</button>
+</div>
+<div id="sheet" class="washi" hidden></div>
+
+<section id="start" class="washi">
+  <div class="art" aria-hidden="true"><div class="sun"></div><div class="mt"></div><div class="snow"></div><div class="waves"></div>
+  <div class="tate" lang="ja"><span>富</span><span>士</span><span>見</span><small>ふじみ</small></div></div>
+  <div class="card">
+    <div class="seal" lang="ja">富士</div>
+    <h1>후지산 AR 렌즈</h1>
+    <p>카메라를 비추면 후지산 정상과 투어 정류장이 있는 방향에 이름표가 뜹니다. 위치와 나침반으로 계산하므로 인터넷이 약해도, 구름이 끼어도 작동해요.</p>
+    <div class="row">
+      <button class="p" id="go" type="button">카메라 시작</button>
+      <button id="demo" type="button">데모 (오층탑 기준)</button>
+    </div>
+    <small class="hint">카메라·위치·동작(나침반) 권한을 허용해주세요. 휴대폰을 세로로 들고, 처음엔 8자를 그리듯 흔들면 나침반이 정확해집니다.</small>
+  </div>
+</section>
+
+<script>
+const P=[
+ {id:"fuji",name:"후지산 정상",jp:"富士山 剣ヶ峰",lat:35.3606,lng:138.7274,alt:3776,fuji:1,
+  key:"3776 m, '미나나로-(みななろう)'로 외우는 일본의 상징",
+  nums:[["3,776 m","최고점 겐가미네"],["1707","마지막 분화 (호에이 대분화)"],["2013","세계문화유산 등재"]],
+  story:"후지산은 용암과 화산재가 겹겹이 쌓인 성층화산으로, 지금의 아름다운 원뿔형은 약 1만 년 전부터 이어진 분화로 완성됐습니다. 마지막 분화는 1707년 호에이 대분화로, 남동쪽 사면에 움푹 팬 호에이 화구가 그 흔적입니다. 옛사람들은 분화를 신의 노여움으로 여겨 산 자체를 신으로 모셨고, 그래서 8합목 위 정상부는 지금도 후지산 혼구 센겐 대사라는 신사의 경내입니다. 2013년 세계유산 등재도 '자연유산'이 아니라 '신앙의 대상과 예술의 원천'이라는 문화유산으로 이루어졌습니다. 호쿠사이의 『후가쿠 36경』이 이 산을 세계에 알린 대표 작품입니다.",
+  points:["산이 곧 신: 정상부는 신사 경내","세계'문화'유산: 신앙과 예술","호에이 화구: 1707년 마지막 분화 자국"],
+  tips:["오전이 가장 잘 보이고 오후엔 구름이 끼기 쉬워요.","가을에는 정상에 첫눈(初冠雪)이 쌓이기 시작합니다."],
+  quiz:["후지산이 세계유산에 등재된 분야는 자연유산일까, 문화유산일까?","문화유산. '신앙의 대상과 예술의 원천'으로 등재됐어요."]},
+ {id:"arakura",name:"주레이토 오층탑",jp:"新倉山浅間公園 忠霊塔",lat:35.5013,lng:138.8014,alt:890,
+  key:"398계단 위, 탑·벚꽃·후지산이 한 장에 담기는 '일본 그 자체'",
+  nums:[["398","사쿠야히메 계단 수"],["1963","탑 건립 연도"],["약 650그루","공원의 벚나무"]],
+  story:"주레이토(忠霊塔)는 청일전쟁부터 태평양전쟁까지 희생된 후지요시다 출신 사람들을 기리기 위해 1963년에 세운 위령탑입니다. 겉모습은 절의 오층탑이지만 실제 역할은 평화를 기원하는 기념탑이라는 점이 포인트입니다. 아래쪽 아라쿠라 후지 센겐 신사에서 시작되는 398개의 '사쿠야히메 계단'을 오르면 탑 너머로 후지산이 정면에 서는 전망대가 나옵니다. 4월 벚꽃, 11월 단풍 시기에는 해외 관광 포스터에 단골로 쓰이는 구도가 완성됩니다.",
+  points:["절탑이 아닌 '위령탑'(1963)","계단 이름은 후지산 여신에서 따온 '사쿠야히메'","정석 구도는 탑 뒤쪽 위 전망대"],
+  tips:["계단이 힘들면 옆의 완만한 언덕길도 있어요.","전망대 데크는 혼잡하니 사진은 짧게, 차례 지키기."],
+  quiz:["주레이토 오층탑은 무엇을 위해 세워졌을까?","전쟁 희생자를 기리고 평화를 기원하는 위령탑이에요 (1963년)."]},
+ {id:"shrine",name:"아라쿠라 후지 센겐 신사",jp:"新倉富士浅間神社",lat:35.4995,lng:138.8032,alt:800,
+  key:"705년 창건 전승, 후지산 여신 '사쿠야히메'를 모시는 신사",
+  nums:[["705","창건 전승 연도"],["1","주신: 고노하나노사쿠야히메"]],
+  story:"'센겐(浅間) 신사'는 후지산의 신을 모시는 신사를 가리키며, 후지산 주변에 여럿 있습니다. 화산 분화를 진정시키기 위해 세워졌다는 유래가 많고, 이곳은 705년 창건 전승을 가집니다. 주신인 고노하나노사쿠야히메는 불길 속에서 아이를 낳았다는 신화가 있어 순산과 화재 예방의 신으로도 사랑받습니다. 오층탑으로 오르는 계단이 이 신사 경내에서 시작되니, 탑과 신사를 한 세트로 기억하세요.",
+  points:["센겐 신사 = 후지산 신을 모시는 신사","사쿠야히메: 순산·화재 예방","오층탑 계단의 출발점"],
+  tips:["도리이 앞에서 가볍게 목례하고, 참배길 한가운데는 비워 걷기.","손 씻는 곳(데미즈야)은 왼손→오른손→입 순서."],
+  quiz:["센겐 신사들이 공통으로 모시는 신은?","후지산의 여신, 고노하나노사쿠야히메예요."]},
+ {id:"honcho",name:"혼초 거리 · 히카와 시계점",jp:"本町通り 氷川時計店",lat:35.4927,lng:138.8041,alt:790,
+  key:"쇼와 레트로 상점가 끝에 후지산이 '벽처럼' 서는 거리",
+  nums:[["약 1 km","직선 상점가"],["10:00–18:30","히카와 시계점 영업"]],
+  story:"후지요시다는 예부터 '군나이 직물'로 번성한 직물 도시였고, 혼초 거리는 그 시절 상인들이 모이던 중심가입니다. 오래된 간판과 낮은 건물들이 이어진 쇼와 레트로 거리 끝에 후지산이 정면으로 크게 서 보이는 착시 같은 원근감이 특징입니다. 거리 초입의 히카와 시계점은 지금도 영업 중인 동네 시계 가게로, SNS를 통해 촬영 명소가 됐습니다. 주민의 생활 도로이기도 해서 시가 교통정리 인력을 배치할 정도로 혼잡 문제가 생긴 곳입니다.",
+  points:["직물 도시 후지요시다의 옛 중심가","원근감 덕에 후지산이 거대하게 보임","관광지 이전에 생활 도로"],
+  tips:["차도에 서서 찍지 말고 인도·횡단보도 섬에서만.","가게 앞에 오래 머물지 않기, 셔터 소리도 조심."],
+  quiz:["후지요시다가 예부터 번성했던 산업은?","직물 산업이에요 (군나이 직물)."]},
+ {id:"lawson",name:"로손 가와구치코역앞점",jp:"ローソン 河口湖駅前店",lat:35.4986,lng:138.7672,alt:830,
+  key:"편의점 지붕 위에 후지산이 '올라앉은' 듯한 구도",
+  nums:[["2024","매너 문제로 가림막 설치 화제"],["24시간","영업"]],
+  story:"평범한 편의점이지만, 정면에서 보면 파란 로손 간판 바로 위로 후지산이 얹힌 듯 보여 SNS에서 세계적으로 퍼졌습니다. 관광객이 몰리며 무단 횡단과 주차 문제가 생기자 2024년 한때 촬영을 막는 가림막이 설치돼 해외 뉴스에도 보도됐습니다. 오버투어리즘을 상징하는 장소로도 자주 언급되니, 사진은 안전한 위치에서 짧게 찍는 것이 이곳의 매너입니다.",
+  points:["'간판 위의 후지산' 구도","오버투어리즘 상징, 2024 가림막","촬영은 인도에서만"],
+  tips:["건너편 인도나 근처 건널목 쪽에서도 구도가 잘 나와요.","점심 전에 음료·간식을 여기서 사두면 편해요."],
+  quiz:["로손 앞 촬영 명소가 국제 뉴스가 된 이유는?","관광객 매너 문제로 2024년 촬영 가림막이 설치됐기 때문이에요."]},
+ {id:"kawaguchiko-st",name:"가와구치코역",jp:"河口湖駅",lat:35.4983,lng:138.7688,alt:830,
+  key:"후지산 관광의 관문, 산장풍 역사(驛舍)",
+  nums:[["약 857 m","역 해발"],["종점","후지큐코선"]],
+  story:"오쓰키에서 이어지는 후지큐코선의 종점으로, 통나무 산장 같은 역사 건물이 특징입니다. 호수 주변을 도는 레트로 버스와 후지산 5합목행 버스가 이곳에서 출발해 후지 5호 관광의 허브 역할을 합니다. 역 앞 광장에서도 날이 맑으면 후지산이 정면으로 보입니다.",
+  points:["후지큐코선 종점","5합목·호수 순환버스 출발지"],
+  tips:["역 안 관광안내소에서 한국어 지도를 받을 수 있어요."],
+  quiz:["가와구치코역은 어느 철도 노선의 종점일까?","후지큐코선이에요."]},
+ {id:"oishi",name:"오이시 공원",jp:"大石公園",lat:35.5229,lng:138.7458,alt:840,
+  key:"꽃길 너머 호수, 호수 너머 후지산: 3단 풍경",
+  nums:[["약 350 m","호숫가 꽃길"],["10월","코키아(댑싸리) 단풍"],["6–7월","라벤더"]],
+  story:"가와구치호 북쪽 기슭에 있어 호수를 사이에 두고 후지산을 마주 보는 위치입니다. 앞쪽 꽃길, 가운데 호수, 뒤쪽 후지산이 겹치는 3단 구도가 이곳의 핵심입니다. 초여름에는 라벤더, 가을에는 둥근 코키아가 초록에서 붉은색으로 물듭니다. 공원 안 '가와구치코 자연생활관'의 블루베리 소프트아이스크림이 유명합니다.",
+  points:["호수 북쪽 = 후지산 정면","꽃·호수·산의 3단 구도","10월 코키아가 붉게"],
+  tips:["바람 없는 아침엔 호수에 비친 '거꾸로 후지(逆さ富士)'도 노려보세요.","산이 보일 때 먼저 찍고, 그다음 꽃 사진."],
+  quiz:["가을 오이시 공원을 붉게 물들이는 둥근 식물은?","코키아(댑싸리)예요."]},
+ {id:"lake-k",name:"가와구치호",jp:"河口湖",lat:35.5135,lng:138.7590,alt:833,
+  key:"후지 5호 중 가장 낮고 호숫가가 가장 긴 호수",
+  nums:[["5","후지 5호"],["약 830 m","수면 해발 (5호 중 최저)"],["약 20 km","둘레"]],
+  story:"후지 5호는 야마나카호, 가와구치호, 사이코, 쇼지코, 모토스코로, 모두 후지산 분화 때 흘러내린 용암이 계곡을 막아 생긴 호수입니다. 가와구치호는 그중 가장 낮은 곳에 있고 둘레가 길어, 호텔과 온천이 가장 많이 모인 관광 중심지입니다. 후지 5호 역시 후지산 세계유산의 구성 자산에 포함됩니다.",
+  points:["용암이 막아 만든 호수","5호 중 가장 낮고 관광 중심","세계유산 구성 자산"],
+  tips:["5호 순서 암기: 동→서로 야마나카·가와구치·사이·쇼지·모토스."],
+  quiz:["후지 5호는 어떻게 생겨났을까?","분화 때 흐른 용암이 계곡을 막아 생겼어요."]},
+ {id:"oshino",name:"오시노 핫카이",jp:"忍野八海",lat:35.4601,lng:138.8325,alt:935,
+  key:"후지산 눈이 땅속에서 오래 걸러져 솟는 8개의 샘",
+  nums:[["8","샘(연못) 수"],["약 13 °C","1년 내내 물 온도"],["1985","명수 100선 선정"]],
+  story:"후지산에 내린 눈과 비가 화산암 지층을 통과하며 오랜 세월 걸러진 뒤 이곳에서 솟아납니다. 원래는 호수였던 곳이 마르면서 샘들만 남았다고 전해집니다. 에도 시대 후지산 순례자(후지코)들은 등산 전에 여덟 연못을 차례로 돌며 몸을 정화했고, 각 연못은 불교의 여덟 용왕(八大竜王)과 연결됩니다. 1934년 국가 천연기념물, 1985년 '일본 명수 100선'에 선정됐고 세계유산 구성 자산이기도 합니다.",
+  points:["8개 샘 = 순례자의 정화 코스","물 온도 연중 약 13 °C","천연기념물 + 명수 100선 + 세계유산"],
+  tips:["연못에 동전 던지기, 손 넣기는 금지예요.","샘물을 받아 마실 수 있는 곳이 있어요. 노점은 현금이 편해요."],
+  quiz:["옛 후지산 순례자들이 오시노 핫카이를 돈 이유는?","등산 전 여덟 샘을 돌며 몸과 마음을 정화하기 위해서예요."]},
+ {id:"yamanaka",name:"야마나카호",jp:"山中湖",lat:35.4170,lng:138.8750,alt:982,
+  key:"5호 중 가장 크고 가장 높은 호수, 가을·겨울엔 '다이아몬드 후지'",
+  nums:[["약 980 m","수면 해발 (5호 중 최고)"],["10–2월","다이아몬드 후지 시즌"]],
+  story:"후지 5호 중 면적이 가장 넓고 가장 높은 곳에 있는 호수로, 사가미강으로 이어지는 물줄기의 시작점이기도 합니다. 호숫가에 백조가 사는 것으로 유명합니다. 10월 중순부터 2월까지는 해 질 녘 태양이 후지산 정상에 딱 걸리는 '다이아몬드 후지'를 볼 수 있어 사진가들이 모여듭니다.",
+  points:["가장 크고 가장 높은 호수","백조의 호수","해가 정상에 걸리는 다이아몬드 후지"],
+  tips:["해 질 녘엔 쌀쌀해요. 겉옷 챙기기.","백조 먹이는 노점에서 100–200엔."],
+  quiz:["해가 후지산 정상에 걸리는 현상을 뭐라고 부를까?","다이아몬드 후지예요."]},
+ {id:"sengen",name:"기타구치혼구 후지센겐 신사",jp:"北口本宮冨士浅間神社",lat:35.4746,lng:138.7952,alt:860,
+  key:"요시다 등산로의 출발점, 거대한 목조 도리이와 삼나무 숲",
+  nums:[["약 18 m","대도리이 높이"],["8월 26–27일","요시다 불 축제"]],
+  story:"에도 시대 순례자들이 후지산 요시다 등산로를 오르기 전에 참배하던 출발점입니다. 경내의 대도리이는 일본 최대급 목조 도리이로 꼽히고, 수령 천 년이 넘는 삼나무들이 참배길을 덮고 있습니다. 매년 8월 26–27일 등산 시즌 마감을 알리는 '요시다 불 축제'가 열려 거리 곳곳에 큰 횃불이 세워집니다. 세계유산 구성 자산입니다.",
+  points:["요시다 등산로 출발점","거대한 목조 도리이","8월 말 불 축제"],
+  tips:["투어 코스엔 없을 수 있어요. 자유 시간에 들를 만한 곳."],
+  quiz:["요시다 불 축제는 무엇을 알리는 축제일까?","후지산 여름 등산 시즌의 마감이에요."]},
+ {id:"fujiq",name:"후지큐 하이랜드",jp:"富士急ハイランド",lat:35.4870,lng:138.7800,alt:830,
+  key:"후지산을 배경으로 달리는 기록급 롤러코스터들",
+  nums:[["1996","'후지야마' 개장"]],
+  story:"후지산 바로 아래 놀이공원으로, 1996년 개장한 롤러코스터 '후지야마'는 당시 높이와 속도로 세계 기록급 코스터였습니다. 멀리서도 레일 구조물이 보여 버스 창밖 랜드마크로 자주 소개됩니다.",
+  points:["후지산 아래 놀이공원","코스터 '후지야마'(1996)"],
+  tips:["버스 창밖에서 레일이 보이면 가와구치코 시내가 가깝다는 신호예요."],
+  quiz:["후지큐 하이랜드의 대표 코스터 이름은?","후지야마예요."]}
+];
+const FUN={
+ fuji:["정상은 '누구 땅'도 아니다?","후지산 정상 일대는 야마나시현과 시즈오카현 사이의 경계가 지금도 정해져 있지 않습니다. 대신 8합목 위는 후지산 혼구 센겐 대사의 땅으로, 1974년 최고재판소 판결을 거쳐 2004년 정식으로 신사에 돌아갔습니다. 즉 정상에 서는 순간, 두 현 어디도 아닌 신사의 경내에 서 있는 셈입니다. 높이 3,776 m는 일본 사람들도 '미(3)나(7)나(7)로(6)-, 모두 되자'라는 말장난으로 외웁니다."],
+ arakura:["너무 유명해서 축제를 취소한 곳","이 풍경은 일본인보다 해외 여행자 사이에서 먼저 유명해져 '역수입 명소'로 불리기도 합니다. 인기가 지나쳐 주민 집 앞 무단 주차와 쓰레기 문제가 커지자, 후지요시다시는 2025년 10년 넘게 이어온 벚꽃 축제를 취소하기로 했습니다. 관광객이 너무 많아 축제를 접은, 보기 드문 사례입니다."],
+ shrine:["불타는 오두막에서 아이를 낳은 여신","사쿠야히메는 하룻밤 만에 아이를 가졌다가 남편 니니기에게 '정말 내 아이냐'는 의심을 받습니다. 결백을 증명하려고 스스로 산실에 불을 지르고 그 안에서 무사히 아이를 낳았다고 합니다. 그래서 불을 다스리는 신, 순산의 신이 됐고, 불을 뿜는 후지산의 여신으로 모셔지게 됐습니다. 신화에는 반전도 있습니다. 니니기가 바위처럼 영원한 언니 이와나가히메를 돌려보내고 꽃처럼 아름다운 사쿠야히메만 택했기 때문에, 사람의 목숨이 꽃처럼 짧아졌다고 전해집니다."],
+ honcho:["후지산 물로 짠 비단의 거리","후지요시다의 직물이 발달한 이유 중 하나로 후지산의 맑은 복류수가 꼽힙니다. 염색과 실 가공에 좋은 물 덕분에 '군나이 직물'은 에도 시대 사람들의 고급 안감으로 인기를 끌었습니다. 혼초 거리에서 후지산이 유난히 크게 보이는 건 망원렌즈 효과처럼 멀리 있는 산이 거리 끝에 꽉 차 보이는 원근 압축 때문이에요. 정상까지는 아직 직선으로 약 16 km나 떨어져 있습니다."],
+ lawson:["로손의 고향은 미국 오하이오","일본 편의점의 대명사 같은 로손은 사실 1939년 미국 오하이오주에서 J.J. 로손이 연 우유 가게에서 시작했습니다. 간판의 파란 우유통 마크가 그 흔적입니다. 미국 회사의 우유 가게 간판이 일본의 상징 후지산과 한 장에 담겨 세계적인 사진 명소가 된 셈입니다."],
+ "kawaguchiko-st":["열차 디자인도 볼거리","이 노선에는 일본 유명 열차 디자이너 미토오카 에이지가 실내를 꾸민 관광열차 '후지산 등산전차'가 달립니다. 목재로 꾸민 객차에 산 쪽을 향한 좌석이 있어, 열차 자체가 작은 관광지 역할을 합니다."],
+ oishi:["코키아 씨앗은 '밭의 캐비아'","공원을 붉게 물들이는 코키아는 일본에서 예부터 말려서 빗자루로 쓰던 식물이라 '호키기(빗자루 나무)'라고도 부릅니다. 그 씨앗은 아키타현 등에서 '돈부리'라는 이름으로 먹는데, 톡톡 터지는 식감 때문에 '밭의 캐비아'라는 별명이 붙었습니다."],
+ "lake-k":["원래 하나였던 세 호수","후지 5호 가운데 사이코·쇼지코·모토스코는 원래 '세노우미'라는 하나의 큰 호수였습니다. 864년 조간 대분화 때 흘러내린 용암이 호수를 메우고 갈라놓아 지금의 세 호수가 됐고, 그 용암 위에 생긴 숲이 아오키가하라 수해입니다. 세 호수는 지금도 땅속으로 이어져 있어 수위가 함께 오르내린다고 합니다."],
+ oshino:["손에 닿을 것 같은 8 m","가장 유명한 연못 '와쿠이케'는 깊이가 약 8 m인데 물이 워낙 맑아서 바닥의 물풀과 송어가 바로 눈앞에 있는 것처럼 보입니다. 물빛이 깊이에 따라 하늘색에서 짙은 청록색으로 바뀌는 것도 맑은 물 덕분입니다. 이 물은 후지산에 내린 눈과 비가 땅속에서 오랜 세월 걸러진 것이라, 지금 보는 물은 여러분이 태어나기 전에 내린 눈일 수도 있습니다."],
+ yamanaka:["하늘에서 보면 고래 모양","야마나카호는 위에서 내려다보면 고래가 헤엄치는 모양이라는 말이 있습니다. 해발 약 980 m로 5호 중 가장 높아 겨울에는 호수 일부가 얼기도 합니다. 그리고 지금 같은 10월 중순부터 2월까지 해 질 녘에는, 지는 해가 후지산 정상에 반지 보석처럼 걸리는 '다이아몬드 후지'를 노리는 사진가들로 호숫가가 붐빕니다."],
+ sengen:["에도에 '미니 후지산'이 수십 개?","에도 시대에는 후지산을 신앙하는 모임 '후지코'가 크게 유행해 '에도 팔백팔 강(講)'이라는 말까지 생겼습니다. 먼 길을 갈 수 없는 사람들을 위해 에도 곳곳에 흙과 용암석을 쌓은 작은 인공 후지산 '후지즈카'를 만들어, 거기에 오르면 진짜 후지산에 오른 것과 같은 공덕이 있다고 믿었습니다. 진짜 후지산 순례자들은 바로 이 신사에서 등산을 시작했습니다."],
+ fujiq:["세계에서 가장 긴 귀신의 집","후지큐 하이랜드의 폐병원 콘셉트 귀신의 집 '전율미궁'은 길이와 소요 시간으로 기네스 기록에 오른 적이 있을 만큼 깁니다. 중간에 포기하는 사람을 위한 탈출구가 따로 있을 정도라고 합니다."]
+};
+P.forEach(p=>p.fun=FUN[p.id]);
+const $=id=>document.getElementById(id);
+let me=null,heading=null,rawH=null,pitch=0,offset=0,fov=52,demo=false,absOK=false;
+try{offset=+localStorage.getItem("ar_off")||0;fov=+localStorage.getItem("ar_fov")||52}catch(e){}
+$("fovBtn").textContent="화각 "+fov+"°";
+
+const R=6371e3,rad=Math.PI/180;
+function dist(a,b){const dl=(b.lat-a.lat)*rad,dn=(b.lng-a.lng)*rad,x=Math.sin(dl/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function bearing(a,b){const y=Math.sin((b.lng-a.lng)*rad)*Math.cos(b.lat*rad),x=Math.cos(a.lat*rad)*Math.sin(b.lat*rad)-Math.sin(a.lat*rad)*Math.cos(b.lat*rad)*Math.cos((b.lng-a.lng)*rad);return(Math.atan2(y,x)/rad+360)%360}
+function fmt(m){return m<1000?Math.round(m)+" m":(m/1000).toFixed(m<10000?1:0)+" km"}
+function norm(d){return((d+540)%360)-180}
+function msg(t,ms){const m=$("msg");m.textContent=t;m.hidden=false;clearTimeout(msg.t);if(ms)msg.t=setTimeout(()=>m.hidden=true,ms)}
+
+// 나침반
+function onOri(e){
+  let h=null;
+  if(typeof e.webkitCompassHeading==="number")h=e.webkitCompassHeading;               // iOS
+  else if(e.absolute&&e.alpha!=null)h=(360-e.alpha)%360;                                // Android absolute
+  if(h==null)return;absOK=true;
+  const so=(screen.orientation&&screen.orientation.angle)||window.orientation||0;h=(h+so+360)%360;
+  rawH=rawH==null?h:(rawH+norm(h-rawH)*0.18+360)%360;                                   // 원형 저역통과
+  if(e.beta!=null)pitch=pitch+((e.beta-90)-pitch)*0.2;                                   // 세로로 세웠을 때 0°
+}
+function startSensors(){
+  window.addEventListener("deviceorientationabsolute",onOri,true);
+  window.addEventListener("deviceorientation",onOri,true);
+  setTimeout(()=>{if(!absOK&&!demo)msg("나침반 값을 받지 못했어요. 설정에서 동작 및 방향 접근을 허용해주세요.",6000)},3000);
+}
+async function askMotion(){
+  try{if(typeof DeviceOrientationEvent!=="undefined"&&DeviceOrientationEvent.requestPermission){
+    const r=await DeviceOrientationEvent.requestPermission();if(r!=="granted")msg("나침반 권한이 거부됐어요. 방향 이름표가 움직이지 않습니다.",6000)}}catch(e){}
+}
+function startGPS(){
+  if(!navigator.geolocation){msg("위치 기능을 쓸 수 없어요.",5000);return}
+  navigator.geolocation.watchPosition(p=>{me={lat:p.coords.latitude,lng:p.coords.longitude,alt:p.coords.altitude??850,acc:p.coords.accuracy}},
+    ()=>msg("위치 권한이 필요해요. 브라우저 설정에서 허용해주세요.",6000),{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
+async function startCam(){
+  try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});$("v").srcObject=s}
+  catch(e){msg("카메라를 열 수 없어요. https 주소에서 열었는지, 카메라 권한을 허용했는지 확인해주세요.",8000)}
+}
+function showUI(){$("start").hidden=true;$("topbar").hidden=false;$("botbar").hidden=false;$("cross").hidden=false;requestAnimationFrame(loop)}
+
+$("go").onclick=async()=>{await askMotion();startSensors();startGPS();await startCam();showUI()};
+$("demo").onclick=()=>{
+  demo=true;me={lat:35.5016,lng:138.8008,alt:900,acc:5};rawH=bearing(me,P[0]);showUI();
+  msg("데모: 오층탑 전망대 기준. 화면을 좌우로 끌어 방향을 돌려보세요.",5000);
+  let sx=null;document.addEventListener("pointerdown",e=>{if(!e.target.closest("button,#sheet,.lbl"))sx=e.clientX});
+  document.addEventListener("pointermove",e=>{if(sx!=null){rawH=(rawH-(e.clientX-sx)*0.15+360)%360;sx=e.clientX}});
+  document.addEventListener("pointerup",()=>sx=null);
+};
+
+$("calBtn").onclick=()=>{
+  if(!me||rawH==null){msg("위치와 나침반을 먼저 잡아야 해요.",3000);return}
+  offset=norm(bearing(me,P[0])-rawH);try{localStorage.setItem("ar_off",offset)}catch(e){}
+  msg(`후지산을 화면 가운데 원에 두고 누르셨죠? 보정 ${offset>0?"+":""}${offset.toFixed(0)}° 적용.`,4000);
+};
+$("fovBtn").onclick=()=>{fov=fov>=70?40:fov+6;try{localStorage.setItem("ar_fov",fov)}catch(e){}$("fovBtn").textContent="화각 "+fov+"°"};
+$("listBtn").onclick=()=>{
+  const rows=P.map(p=>({p,d:me?dist(me,p):null})).sort((a,b)=>(a.d??0)-(b.d??0));
+  sheet(`<h2>${me?"가까운 순":"장소 목록"} <span lang="ja" style="font-size:.8rem;color:var(--shu)">名所</span></h2>
+  <ul class="list">${rows.map(r=>`<li data-id="${r.p.id}"><div><div>${r.p.name}</div><div class="hook">${r.p.fun?r.p.fun[0]:r.p.key}</div></div><span>${r.d!=null?fmt(r.d):""}</span></li>`).join("")}</ul>
+  <div class="acts"><button type="button" class="p" id="quizGo">퀴즈로 복습</button><button type="button" id="cls">닫기</button></div>`);
+  $("quizGo").onclick=()=>quiz(0);
+};
+function sheet(html){const s=$("sheet");s.innerHTML=`<div class="in">${html}</div>`;s.hidden=false;s.scrollTop=0;const c=$("cls");if(c)c.onclick=()=>s.hidden=true;
+  s.querySelectorAll("[data-id]").forEach(li=>li.onclick=()=>detail(P.find(p=>p.id===li.dataset.id)))}
+let qOrder=[];
+function quiz(i){
+  if(i===0)qOrder=P.map((_,k)=>k).sort(()=>Math.random()-.5);
+  if(i>=qOrder.length){sheet(`<h2>복습 끝</h2><p>${P.length}곳의 핵심을 한 바퀴 돌았어요. 현장에서 이름표를 눌러 다시 확인해보세요.</p><div class="acts"><button type="button" class="p" id="again">다시 하기</button><button type="button" id="cls">닫기</button></div>`);$("again").onclick=()=>quiz(0);return}
+  const p=P[qOrder[i]];
+  sheet(`<div class="qn">${i+1} / ${qOrder.length} · ${p.name}</div><h2 class="q">${p.quiz[0]}</h2>
+  <div class="ans" id="ans" hidden><b>${p.quiz[1]}</b><div class="hook">${p.key}</div></div>
+  <div class="acts"><button type="button" class="p" id="reveal">정답 보기</button><button type="button" id="next" hidden>다음</button><button type="button" id="cls">닫기</button></div>`);
+  $("reveal").onclick=()=>{$("ans").hidden=false;$("reveal").hidden=true;$("next").hidden=false};
+  $("next").onclick=()=>quiz(i+1);
+}
+function detail(p){
+  const d=me?dist(me,p):null,b=me?bearing(me,p):null;
+  sheet(`<div class="kicker" lang="ja">${p.jp}</div><h2>${p.name}</h2>
+  <div class="meta">${d!=null?fmt(d)+" · 방위 "+b.toFixed(0)+"° · ":""}해발 ${p.alt.toLocaleString()} m</div>
+  <p class="key">${p.key}</p>
+  ${p.fun?`<div class="fun"><div class="fl">재밌는 이야기</div><h4>${p.fun[0]}</h4><p>${p.fun[1]}</p></div>`:""}
+  <div class="nums">${p.nums.map(n=>`<div class="num"><b>${n[0]}</b><span>${n[1]}</span></div>`).join("")}</div>
+  <h3>가이드 해설</h3><p class="story">${p.story}</p>
+  <h3>꼭 기억할 포인트</h3><ol class="pts">${p.points.map(t=>`<li>${t}</li>`).join("")}</ol>
+  ${p.tips.length?`<h3>현장 팁</h3><ul>${p.tips.map(t=>`<li>${t}</li>`).join("")}</ul>`:""}
+  <details class="qz"><summary>확인 퀴즈: ${p.quiz[0]}</summary><p>${p.quiz[1]}</p></details>
+  <div class="acts"><button type="button" id="cls">닫기</button>
+  <a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}" target="_blank" rel="noopener">길찾기</a></div>`);
+}
+
+// 렌더링
+const els={};
+P.forEach(p=>{const el=document.createElement("div");el.className="lbl"+(p.fuji?" fuji":"");
+  el.innerHTML=`<div class="b"><div class="t"><div class="n">${p.name}</div><div class="j" lang="ja">${p.jp.split(" ").pop()}</div></div><div class="d"></div></div><div class="stem"></div><div class="pin"></div>`;
+  el.onclick=()=>detail(p);$("layer").appendChild(el);els[p.id]=el});
+const edgeL=document.createElement("div"),edgeR=document.createElement("div");edgeL.className=edgeR.className="edge";
+edgeL.style.left="max(8px,env(safe-area-inset-left,0px))";edgeR.style.right="max(8px,env(safe-area-inset-right,0px))";
+$("layer").append(edgeL,edgeR);edgeL.onclick=()=>detail(P[0]);edgeR.onclick=()=>detail(P[0]);
+
+function loop(){
+  requestAnimationFrame(loop);
+  const W=innerWidth,H=innerHeight;
+  if(rawH!=null){heading=(rawH+offset+360)%360;$("hd").innerHTML=heading.toFixed(0)+"° <b lang=\"ja\">"+["北","北東","東","南東","南","南西","西","北西"][Math.round(heading/45)%8]+"</b>"}
+  if(!me){$("here").textContent="위치 찾는 중…";return}
+  const near=P.filter(p=>!p.fuji).map(p=>({p,d:dist(me,p)})).sort((a,b)=>a.d-b.d)[0];
+  $("here").textContent=near.d<250?"지금 여기: "+near.p.name:"가장 가까운 곳: "+near.p.name+" "+fmt(near.d);
+  const vfov=fov*H/W, placed=[];
+  edgeL.hidden=edgeR.hidden=true;
+  P.map(p=>({p,d:dist(me,p)})).sort((a,b)=>b.d-a.d).forEach(({p,d})=>{
+    const el=els[p.id];
+    if(heading==null||d<120||d>45000){el.style.opacity=0;el.style.pointerEvents="none";return}
+    const rel=norm(bearing(me,p)-heading);
+    if(p.fuji&&Math.abs(rel)>fov/2){const e=rel<0?edgeL:edgeR;e.hidden=false;e.textContent=(rel<0?"◀ ":"")+"후지산 "+Math.abs(rel).toFixed(0)+"°"+(rel>0?" ▶":"")}
+    if(Math.abs(rel)>fov/2+4){el.style.opacity=0;el.style.pointerEvents="none";return}
+    const elev=Math.atan2(p.alt-(me.alt||850)-d*d/(2*R),d)/rad; // 지구 곡률 보정
+    const x=W/2+rel/fov*W, y=Math.max(110,Math.min(H-90,H/2-(elev-pitch)/vfov*H));
+    // 겹침 방지: 가까이 있는 이름표는 줄기를 늘려 위로 쌓기
+    let lift=0;for(const q of placed){if(Math.abs(q.x-x)<120&&Math.abs((q.y-q.lift)-(y-lift))<44)lift=y-(q.y-q.lift)+44}
+    placed.push({x,y,lift});
+    const hw=(el.offsetWidth||160)/2,cx=Math.max(hw+8,Math.min(W-hw-8,x));el.style.left=cx+"px";el.style.top=y+"px";el.style.opacity=1;el.style.pointerEvents="auto";
+    el.querySelector(".stem").style.height=(18+lift)+"px";
+    el.querySelector(".d").textContent=fmt(d);
+    el.style.transform=`translate(-50%,-100%) scale(${d>15000?.85:d>5000?.95:1})`;
+  });
+}
+</script>
+</body>
+</html>
